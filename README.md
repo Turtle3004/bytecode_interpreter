@@ -4,7 +4,7 @@ The bytecode language it's supporting the basic arithmatic and loop.
 
 For reference used the following codes :- 
 
- 1) Basic arithmatic:-
+1) Basic arithmatic:-
  
  function f() {
 
