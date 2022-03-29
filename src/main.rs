@@ -5,6 +5,7 @@ use std::io;
 use std::io::{BufRead, BufReader};
 use std::str::from_utf8;
 
+
 // Type of instructions supported and the expected value(optional) associated with them.
 enum ByteCodeInstruction {
     LOAD_VAL(i32),
