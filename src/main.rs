@@ -5,6 +5,7 @@ use std::io;
 use std::io::{BufRead, BufReader};
 use std::str::from_utf8;
 
+// Type of instructions supported and the expected value(optional) associated with them.
 enum ByteCodeInstruction {
     LOAD_VAL(i32),
     WRITE_VAR(String),
@@ -20,7 +21,7 @@ enum ByteCodeInstruction {
 }
 
 struct byte_code {
-    // Mapping of all the instruction with the optional values/variables they are associated with.
+    // Mapping of all the instructions with the optional values/variables they are associated with.
     instruction_sets: Vec<ByteCodeInstruction>,
 
     // Mapping of the LABEL to the number of line it should jump.
@@ -48,7 +49,7 @@ impl byte_code {
         }
         Ok(())
     }
-
+    // Converting from any result returned from libraries to Result<T, E>
     fn convert_to_result<T, E: std::fmt::Debug>(
         res: std::result::Result<T, E>,
         message: String,
@@ -81,6 +82,7 @@ impl byte_code {
             let inst = buffer[0].as_str();
             inst_count = inst_count + 1;
             match inst {
+                // Checking LOAD_VAL instruction:- it's length and storing the value with it in instruction_sets.
                 "LOAD_VAL" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -92,6 +94,7 @@ impl byte_code {
                     self.instruction_sets
                         .push(ByteCodeInstruction::LOAD_VAL(value));
                 }
+                // Checking WRITE_VAR instruction:- it's length and storing the value(in this case variable) with it in instruction_sets.
                 "WRITE_VAR" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -102,6 +105,7 @@ impl byte_code {
                     self.instruction_sets
                         .push(ByteCodeInstruction::WRITE_VAR(value));
                 }
+                // Checking READ_VAR instruction:- it's length and storing the value(in this case variable) with it in instruction_sets.
                 "READ_VAR" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -112,6 +116,7 @@ impl byte_code {
                     self.instruction_sets
                         .push(ByteCodeInstruction::READ_VAR(value));
                 }
+                // Checking CMP instruction:- it's length and storing the value(in this case variable) with it in instruction_sets.
                 "CMP" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -119,9 +124,9 @@ impl byte_code {
                         buffer[1].parse::<i32>(),
                         format!("Unable to parse {:?}", buffer),
                     )?;
-
                     self.instruction_sets.push(ByteCodeInstruction::CMP(value));
                 }
+                // Checking JMP instruction:- it's length and storing the value(in this case Label) with it in instruction_sets.
                 "JMP" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -131,6 +136,7 @@ impl byte_code {
                     )?;
                     self.instruction_sets.push(ByteCodeInstruction::JMP(value));
                 }
+                // Checking JMP_LE instruction:- it's length and storing the value(in this case Label) with it in instruction_sets.
                 "JMP_LE" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -141,6 +147,8 @@ impl byte_code {
                     self.instruction_sets
                         .push(ByteCodeInstruction::JMP_LE(value));
                 }
+
+                // Storing ADD, SUB, MULTIPLY, DIVIDE and RETURN_value in instruction_sets.
                 "ADD" => {
                     byte_code::check_length(&buffer, 1)?;
                     self.instruction_sets.push(ByteCodeInstruction::ADD);
@@ -162,6 +170,7 @@ impl byte_code {
                     self.instruction_sets
                         .push(ByteCodeInstruction::RETURN_VALUE);
                 }
+                // Checking LABEL instruction:- it's length and storing the value(in this inst_count) with it in instruction_sets.
                 "LABEL" => {
                     byte_code::check_length(&buffer, 2)?;
 
@@ -194,6 +203,7 @@ impl byte_code {
         return Ok(());
     }
 
+    // Executing the instructions.
     fn execute(&self) -> Result<i32, String> {
         // Stack -> Given Bytecode language is stack based.
         let mut v: Vec<i32> = Vec::new();
@@ -209,9 +219,11 @@ impl byte_code {
                 inst_num
             ))?;
             match instruction {
+                // For LOAD_VAL pushing the value on the stack.
                 ByteCodeInstruction::LOAD_VAL(value) => {
                     v.push(value.clone());
                 }
+                // For WRITE_VAR poping the value from the stack assigning it to the variable.
                 ByteCodeInstruction::WRITE_VAR(value) => {
                     variable_to_value.insert(
                         value.clone(),
@@ -221,41 +233,47 @@ impl byte_code {
                         ))?,
                     );
                 }
+                // For READ_VAR reading the variables value and pushing it on the stack.
                 ByteCodeInstruction::READ_VAR(value) => {
                     let x = variable_to_value.get(&value.clone()).ok_or(format!(
-                        "Unexpected: unable to get the value from variable {}",
+                        "Unexpected: unable to get the value from variable {}!",
                         value
                     ))?;
                     v.push(*x);
                 }
+                // For CMP, get the data from the stack and compare it with value.
                 ByteCodeInstruction::CMP(value) => {
                     let x = v.pop().ok_or(format!(
-                        "Unexpected: unable to get the value: {} for CMP instruction",
+                        "Unexpected: unable to get the value: {} for CMP instruction!",
                         value
                     ))?;
                     v.push(x - value);
                 }
+                // For JMP, get the instruction number.
                 ByteCodeInstruction::JMP(value) => {
                     inst_num = *self
                         .label_to_instruction
                         .get(value)
-                        .ok_or(format!("Unexpected: unable to get the value 5"))?;
+                        .ok_or(format!("Unexpected: unable to get the instruction number!"))?;
                     inst_num -= 1;
                     continue;
                 }
+                // For JMP, get the instruction number.
                 ByteCodeInstruction::JMP_LE(value) => {
                     if v.pop()
-                        .ok_or(format!("Unexpected: unable to get the value 6"))?
+                        .ok_or(format!("Unexpected: unable to get the value!"))?
                         < 0
                     {
                         inst_num = *self
                             .label_to_instruction
                             .get(value)
-                            .ok_or(format!("Unexpected: unable to get the value 7"))?;
+                            .ok_or(format!("Unexpected: unable to get the instruction number!"))?;
                         inst_num -= 1;
                         continue;
                     }
                 }
+                // For ADD, SUB, MULTIPLY, DIVIDE pop two values from the stack perform +, -, *, / respectively
+                // and push the result on the stack.
                 ByteCodeInstruction::ADD => {
                     let x = v
                         .pop()
@@ -295,10 +313,11 @@ impl byte_code {
                         .ok_or(format!("Unexpected: unable to get the value!"))?;
                     v.push(y / x);
                 }
+                // For RETURN_VALUE, pop the value from the stack.
                 ByteCodeInstruction::RETURN_VALUE => {
                     res = v
                         .pop()
-                        .ok_or(format!("Unexpected: unable to get the final value!"))?;
+                        .ok_or(format!("Unexpected: unable to get the result!"))?;
                 }
             }
             inst_num = inst_num + 1;
@@ -307,13 +326,17 @@ impl byte_code {
     }
 }
 
+// Check for a valid variable (e.g. 'x')
 fn valid_variable(mut variable: String) -> Result<String, String> {
+    // Length should be at least 3
     if variable.len() < 3 {
         return Err(format!("Variable length is less than 3!"));
     }
+    // Considering the ASCII. (NOTE: For the sake of simplicity stright quotes is being used instead of curly)
     if !variable.is_ascii() {
         return Err(format!("Variable is not in ASCII!"));
     }
+    // Removing the first and last characters of the variable and checking is they are '
     let x = variable.remove(0);
     let y = variable.pop().ok_or(format!(
         "Unexpected: unable to get the character from the variable: {}",
@@ -323,15 +346,16 @@ fn valid_variable(mut variable: String) -> Result<String, String> {
         return Err(format!("Invalid character!"));
     }
 
-    let first_char_of_variable = variable.chars().nth(0).ok_or(format!(
+    // First character of the variable
+    let first_char = variable.chars().nth(0).ok_or(format!(
         "Unexpected: Unable to get first character from {}!",
         variable
     ))?;
-
-    if !first_char_of_variable.is_alphabetic() && first_char_of_variable != '_' {
+    // first_char should be either an alphabet or _
+    if !first_char.is_alphabetic() && first_char != '_' {
         return Err(format!("Variable should start with an alphabet or _ !"));
     }
-
+    // All the characters of the variable should be either alphanumeric or _
     if !(variable.chars().all(|x| x.is_alphanumeric() || x == '_')) {
         return Err(format!("Variable should contain alphabets, numbers or _"));
     }
@@ -341,7 +365,9 @@ fn valid_variable(mut variable: String) -> Result<String, String> {
 
 fn main() {
     let mut b: byte_code = byte_code::new();
-    match b.read_file_to_bytecode(String::from("byteCode_loop.txt")) {
+    // For task 1: use "byteCode.txt" Should get answer 2.
+    // For task 2(Loops): use "byteCode_loop.txt" Should get answer 45.
+    match b.read_file_to_bytecode(String::from("byteCode.txt")) {
         Ok(()) => println!("Parsing successful!"),
         Err(err) => {
             println!("Unable to parse with error: {}", err);
